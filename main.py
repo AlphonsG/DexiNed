@@ -13,7 +13,7 @@ from datasets import DATASET_NAMES, BipedDataset, TestDataset, dataset_info
 from losses import *
 from model import DexiNed
 from utils import (image_normalization, save_image_batch_to_disk,
-                   visualize_result,count_parameters)
+                   visualize_result,count_parameters, vis_preds)
 
 IS_LINUX = True if platform.system()=="Linux" else False
 def train_one_epoch(epoch, dataloader, model, criterion, optimizer, device,
@@ -113,13 +113,13 @@ def test(checkpoint_path, dataloader, model, device, output_dir, args):
     if not os.path.isfile(checkpoint_path):
         raise FileNotFoundError(
             f"Checkpoint filte note found: {checkpoint_path}")
-    print(f"Restoring weights from: {checkpoint_path}")
+    # print(f"Restoring weights from: {checkpoint_path}")
     model.load_state_dict(torch.load(checkpoint_path,
                                      map_location=device))
 
     # Put model in evaluation mode
     model.eval()
-
+    imgs = []
     with torch.no_grad():
         total_duration = []
         for batch_id, sample_batched in enumerate(dataloader):
@@ -128,7 +128,7 @@ def test(checkpoint_path, dataloader, model, device, output_dir, args):
                 labels = sample_batched['labels'].to(device)
             file_names = sample_batched['file_names']
             image_shape = sample_batched['image_shape']
-            print(f"input tensor shape: {images.shape}")
+            # print(f"input tensor shape: {images.shape}")
             # images = images[:, [2, 1, 0], :, :]
 
             end = time.perf_counter()
@@ -140,16 +140,14 @@ def test(checkpoint_path, dataloader, model, device, output_dir, args):
             tmp_duration = time.perf_counter() - end
             total_duration.append(tmp_duration)
 
-            save_image_batch_to_disk(preds,
-                                     output_dir,
-                                     file_names,
-                                     image_shape,
-                                     arg=args)
+            imgs += vis_preds(preds, image_shape)
             torch.cuda.empty_cache()
 
-    total_duration = np.sum(np.array(total_duration))
-    print("******** Testing finished in", args.test_data, "dataset. *****")
-    print("FPS: %f.4" % (len(dataloader)/total_duration))
+    # total_duration = np.sum(np.array(total_duration))
+    # print("******** Testing finished in", args.test_data, "dataset. *****")
+    # print("FPS: %f.4" % (len(dataloader)/total_duration))
+    return imgs
+
 
 def testPich(checkpoint_path, dataloader, model, device, output_dir, args):
     # a test model plus the interganged channels

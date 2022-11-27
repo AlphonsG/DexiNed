@@ -169,12 +169,14 @@ class TestDataset(Dataset):
                  img_height,
                  img_width,
                  test_list=None,
-                 arg=None
+                 arg=None,
+                 imgs=None,
                  ):
         if test_data not in DATASET_NAMES:
             raise ValueError(f"Unsupported dataset: {test_data}")
 
         self.data_root = data_root
+        self.imgs = imgs
         self.test_data = test_data
         self.test_list = test_list
         self.args=arg
@@ -186,13 +188,14 @@ class TestDataset(Dataset):
         self.img_width = img_width
         self.data_index = self._build_index()
 
-        print(f"mean_bgr: {self.mean_bgr}")
+        # print(f"mean_bgr: {self.mean_bgr}")
 
     def _build_index(self):
         sample_indices = []
         if self.test_data == "CLASSIC":
             # for single image testing
-            images_path = os.listdir(self.data_root)
+            images_path = (os.listdir(self.data_root) if self.imgs is None else
+                           self.imgs)
             labels_path = None
             sample_indices = [images_path, labels_path]
         else:
@@ -238,8 +241,10 @@ class TestDataset(Dataset):
         else:
             image_path = self.data_index[idx][0]
         label_path = None if self.test_data == "CLASSIC" else self.data_index[idx][1]
-        img_name = os.path.basename(image_path)
-        file_name = os.path.splitext(img_name)[0] + ".png"
+        img_name = (os.path.basename(image_path) if self.imgs is None else
+                    '')
+        file_name = (os.path.splitext(img_name)[0] + ".png" if self.imgs is
+                     None else '')
 
         # base dir
         if self.test_data.upper() == 'BIPED':
@@ -253,7 +258,8 @@ class TestDataset(Dataset):
             gt_dir = self.data_root
 
         # load data
-        image = cv2.imread(os.path.join(img_dir, image_path), cv2.IMREAD_COLOR)
+        image = (cv2.imread(os.path.join(img_dir, image_path), cv2.IMREAD_COLOR)
+                 if self.imgs is None else self.imgs[idx])
         if not self.test_data == "CLASSIC":
             label = cv2.imread(os.path.join(
                 gt_dir, label_path), cv2.IMREAD_COLOR)
@@ -270,8 +276,8 @@ class TestDataset(Dataset):
         if self.test_data == "CLASSIC":
             img_height = self.img_height
             img_width = self.img_width
-            print(
-                f"actual size: {img.shape}, target size: {( img_height,img_width,)}")
+            # print(
+            #     f"actual size: {img.shape}, target size: {( img_height,img_width,)}")
             # img = cv2.resize(img, (self.img_width, self.img_height))
             img = cv2.resize(img, (img_width,img_height))
             gt = None
